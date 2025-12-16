@@ -1,0 +1,75 @@
+---
+title: "Analysis of GC Content in Bacterial Genomes"
+author: "CJA"
+date: "2025-12-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(ggplot2)
+library(dplyr)
+library(rstatix)
+```
+1. Introduction
+This report presents an analysis of the GC content (%) in bacterial genomes across different genera.
+The data were retrieved from the NCBI database and processed automatically.
+
+2. Data Loading
+```{r}
+df <- read.csv("D:/Programation/Nouveau dossier/gc_genomes.csv")
+df$genus <- as.factor(df$genus)
+```
+
+3. Descriptive Statistics
+```{r}
+desc <- df %>%
+group_by(genus) %>%
+summarise(
+mean_gc = mean(gc_content_percent),
+sd_gc = sd(gc_content_percent),
+n = n()
+)
+desc
+```
+4. Normality Test
+```{r}
+norm_test <- df %>%
+group_by(genus) %>%
+summarise(shapiro_p = shapiro.test(gc_content_percent)$p.value)
+norm_test
+```
+5. Global Statistical Test
+```{r}
+if(all(norm_test$shapiro_p > 0.05)){
+test <- aov(gc_content_percent ~ genus, data=df)
+summary(test)
+posthoc <- TukeyHSD(test)
+posthoc
+} else {
+test <- kruskal_test(gc_content_percent ~ genus, data=df)
+test
+posthoc <- df %>%
+dunn_test(gc_content_percent ~ genus, p.adjust.method = "bonferroni")
+posthoc
+}
+```
+6. Visualization
+```{r}
+p <- ggplot(df, aes(x=genus, y=gc_content_percent, color=genus)) +
+geom_boxplot(outlier.shape = NA) +
+geom_jitter(width=0.2, alpha=0.6) +
+theme_minimal(base_size = 14) +
+labs(
+title = "GC Content (%) by Bacterial Genus",
+x = "Genus",
+y = "%GC"
+) +
+theme(legend.position = "none")
+p
+```
+7. Interpretation
+The results highlight differences in GC content between bacterial genera.
+Statistical tests and visualizations provide a clear quantitative view of these differences.
+These insights can be used for comparative genomics studies or publications.
+
